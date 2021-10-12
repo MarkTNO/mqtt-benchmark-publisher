@@ -12,11 +12,17 @@ import (
 	"github.com/GaryBoone/GoStats/stats"
 )
 
+type Payload struct {
+    GeneratedAt int64
+    ClientId    int
+    MessageId   int
+}
+
 // Message describes a message
 type Message struct {
 	Topic     string
 	QoS       byte
-	Payload   interface{}
+	Payload   Payload
 	Sent      time.Time
 	Delivered time.Time
 	Error     bool
@@ -60,12 +66,10 @@ func main() {
 	var (
 		broker       = flag.String("broker", "tcp://localhost:1883", "MQTT broker endpoint as scheme://host:port")
 		topic        = flag.String("topic", "/test", "MQTT topic for outgoing messages")
-		payload      = flag.String("payload", "", "MQTT message payload. If empty, then payload is generated based on the size parameter")
 		username     = flag.String("username", "", "MQTT client username (empty if auth disabled)")
 		password     = flag.String("password", "", "MQTT client password (empty if auth disabled)")
 		qos          = flag.Int("qos", 1, "QoS for published messages")
 		wait         = flag.Int("wait", 60000, "QoS 1 wait timeout in milliseconds")
-		size         = flag.Int("size", 100, "Size of the messages payload (bytes)")
 		count        = flag.Int("count", 100, "Number of messages to send per client")
 		clients      = flag.Int("clients", 10, "Number of clients to start")
 		format       = flag.String("format", "text", "Output format: text|json")
@@ -110,8 +114,6 @@ func main() {
 			BrokerUser:  *username,
 			BrokerPass:  *password,
 			MsgTopic:    *topic,
-			MsgPayload:  *payload,
-			MsgSize:     *size,
 			MsgCount:    *count,
 			MsgQoS:      byte(*qos),
 			Quiet:       *quiet,
@@ -191,24 +193,24 @@ func printResults(results []*RunResults, totals *TotalResults, format string) {
 	default:
 		for _, res := range results {
 			fmt.Printf("======= CLIENT %d =======\n", res.ID)
-			fmt.Printf("Ratio:               %.3f (%d/%d)\n", float64(res.Successes)/float64(res.Successes+res.Failures), res.Successes, res.Successes+res.Failures)
-			fmt.Printf("Runtime (s):         %.3f\n", res.RunTime)
-			fmt.Printf("Msg time min (ms):   %.3f\n", res.MsgTimeMin)
-			fmt.Printf("Msg time max (ms):   %.3f\n", res.MsgTimeMax)
-			fmt.Printf("Msg time mean (ms):  %.3f\n", res.MsgTimeMean)
-			fmt.Printf("Msg time std (ms):   %.3f\n", res.MsgTimeStd)
-			fmt.Printf("Bandwidth (msg/sec): %.3f\n\n", res.MsgsPerSec)
+			fmt.Printf("Send success ratio:       %.3f (%d/%d)\n", float64(res.Successes)/float64(res.Successes+res.Failures), res.Successes, res.Successes+res.Failures)
+			fmt.Printf("Runtime (s):              %.3f\n", res.RunTime)
+			fmt.Printf("Msg send time min (ms):   %.3f\n", res.MsgTimeMin)
+			fmt.Printf("Msg send time max (ms):   %.3f\n", res.MsgTimeMax)
+			fmt.Printf("Msg send time mean (ms):  %.3f\n", res.MsgTimeMean)
+			fmt.Printf("Msg send time std (ms):   %.3f\n", res.MsgTimeStd)
+			fmt.Printf("Bandwidth (msg/sec):      %.3f\n\n", res.MsgsPerSec)
 		}
 		fmt.Printf("========= TOTAL (%d) =========\n", len(results))
-		fmt.Printf("Total Ratio:                 %.3f (%d/%d)\n", totals.Ratio, totals.Successes, totals.Successes+totals.Failures)
-		fmt.Printf("Total Runtime (sec):         %.3f\n", totals.TotalRunTime)
-		fmt.Printf("Average Runtime (sec):       %.3f\n", totals.AvgRunTime)
-		fmt.Printf("Msg time min (ms):           %.3f\n", totals.MsgTimeMin)
-		fmt.Printf("Msg time max (ms):           %.3f\n", totals.MsgTimeMax)
-		fmt.Printf("Msg time mean mean (ms):     %.3f\n", totals.MsgTimeMeanAvg)
-		fmt.Printf("Msg time mean std (ms):      %.3f\n", totals.MsgTimeMeanStd)
-		fmt.Printf("Average Bandwidth (msg/sec): %.3f\n", totals.AvgMsgsPerSec)
-		fmt.Printf("Total Bandwidth (msg/sec):   %.3f\n", totals.TotalMsgsPerSec)
+		fmt.Printf("Total send success ratio:     %.3f (%d/%d)\n", totals.Ratio, totals.Successes, totals.Successes+totals.Failures)
+		fmt.Printf("Total Runtime (sec):          %.3f\n", totals.TotalRunTime)
+		fmt.Printf("Average Runtime (sec):        %.3f\n", totals.AvgRunTime)
+		fmt.Printf("Msg send time min (ms):       %.3f\n", totals.MsgTimeMin)
+		fmt.Printf("Msg send time max (ms):       %.3f\n", totals.MsgTimeMax)
+		fmt.Printf("Msg send time mean mean (ms): %.3f\n", totals.MsgTimeMeanAvg)
+		fmt.Printf("Msg send time mean std (ms):  %.3f\n", totals.MsgTimeMeanStd)
+		fmt.Printf("Average Bandwidth (msg/sec):  %.3f\n", totals.AvgMsgsPerSec)
+		fmt.Printf("Total Bandwidth (msg/sec):    %.3f\n", totals.TotalMsgsPerSec)
 	}
 }
 

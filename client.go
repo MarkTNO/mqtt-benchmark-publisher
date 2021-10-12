@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+	"encoding/json"
 
 	"github.com/GaryBoone/GoStats/stats"
 
@@ -19,8 +20,6 @@ type Client struct {
 	BrokerUser  string
 	BrokerPass  string
 	MsgTopic    string
-	MsgPayload  string
-	MsgSize     int
 	MsgCount    int
 	MsgQoS      byte
 	Quiet       bool
@@ -76,19 +75,15 @@ func (c *Client) Run(res chan *RunResults) {
 }
 
 func (c *Client) genMessages(ch chan *Message, done chan bool) {
-	var payload interface{}
-	// set payload if specified
-	if c.MsgPayload != "" {
-		payload = c.MsgPayload
-	} else {
-		payload = make([]byte, c.MsgSize)
-	}
-
 	for i := 0; i < c.MsgCount; i++ {
 		ch <- &Message{
 			Topic:   c.MsgTopic,
 			QoS:     c.MsgQoS,
-			Payload: payload,
+			Payload: Payload {
+			    GeneratedAt: time.Now().UnixNano(),
+			    ClientId: c.ID,
+			    MessageId: i,
+			},
 		}
 	}
 
@@ -106,18 +101,25 @@ func (c *Client) pubMessages(in, out chan *Message, doneGen, donePub chan bool) 
 			select {
 			case m := <-in:
 				m.Sent = time.Now()
-				token := client.Publish(m.Topic, m.QoS, false, m.Payload)
-				res := token.WaitTimeout(c.WaitTimeout)
-				if !res {
-					log.Printf("CLIENT %v Timeout sending message: %v\n", c.ID, token.Error())
-					m.Error = true
-				} else if token.Error() != nil {
-					log.Printf("CLIENT %v Error sending message: %v\n", c.ID, token.Error())
-					m.Error = true
+				jsonPayload, jsonErr := json.Marshal(m.Payload)
+				if jsonErr != nil {
+				log.Printf("CLIENT %v Error json formatting message: %v\n", c.ID, m.Payload)
+				    m.Error = true
 				} else {
-					m.Delivered = time.Now()
-					m.Error = false
-				}
+				    token := client.Publish(m.Topic, m.QoS, false, jsonPayload)
+				    res := token.WaitTimeout(c.WaitTimeout)
+
+                    if !res {
+                        log.Printf("CLIENT %v Timeout sending message: %v\n", c.ID, token.Error())
+                        m.Error = true
+                    } else if token.Error() != nil {
+                        log.Printf("CLIENT %v Error sending message: %v\n", c.ID, token.Error())
+                        m.Error = true
+                    } else {
+                        m.Delivered = time.Now()
+                        m.Error = false
+                    }
+                }
 				out <- m
 
 				if ctr > 0 && ctr%100 == 0 {
@@ -138,7 +140,7 @@ func (c *Client) pubMessages(in, out chan *Message, doneGen, donePub chan bool) 
 
 	opts := mqtt.NewClientOptions().
 		AddBroker(c.BrokerURL).
-		SetClientID(fmt.Sprintf("%s-%v", c.ClientID, c.ID)).
+		SetClientID(fmt.Sprintf("Publisher-%s-%v", c.ClientID, c.ID)).
 		SetCleanSession(true).
 		SetAutoReconnect(true).
 		SetOnConnectHandler(onConnected).
