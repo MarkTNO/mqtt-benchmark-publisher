@@ -1,4 +1,4 @@
-module github.com/krylovsk/mqtt-benchmark
+module github.com/MarkTNO/mqtt-benchmark-publisher
 
 go 1.13
 
